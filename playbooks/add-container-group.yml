@@ -1,0 +1,72 @@
+- name: "Add ACM ManageClusters as Ansible Automation Controller Container Groups"
+  hosts: "{{ target_hosts }}"
+  connection: local
+  gather_facts: false
+  tasks:
+    - include_tasks: ../roles/k8s-cluster-access/tasks/get-static-access.yml
+      vars:
+        rbac_template: ../k8s-rbac/cluster-admin
+        serviceaccount_name: cluster-admin
+    - name: "Creating namespace on target cluster"
+      kubernetes.core.k8s:
+        state: "present"
+        host: "{{ cluster_proxy.cluster_url }}"
+        validate_certs: no
+        api_key: "{{ managed_serviceaccount.token }}"
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "ansible-automation-platform"
+    - name: "Get OpenShift global pull secret from ACM hub"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "pull-secret"
+        namespace: "openshift-config"
+      register: openshift_pull_secret
+    - name: "Create OpenShift ImagePullSecret on target cluster"
+      kubernetes.core.k8s:
+        state: "present"
+        host: "{{ cluster_proxy.cluster_url }}"
+        api_key: "{{ managed_serviceaccount.token }}"
+        validate_certs: no
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ openshift_pull_secret.resources[0].metadata.name }}"
+            namespace: "ansible-automation-platform"
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ openshift_pull_secret.resources[0]['data']['.dockerconfigjson'] }}"
+    - name: "Add ImagePullSecret to default ServiceAccount on target cluster"
+      kubernetes.core.k8s:
+        state: "present"
+        host: "{{ cluster_proxy.cluster_url }}"
+        api_key: "{{ managed_serviceaccount.token }}"
+        validate_certs: no
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: "default"
+            namespace: "ansible-automation-platform"
+          imagePullSecrets:
+            - name: "{{ openshift_pull_secret.resources[0].metadata.name }}"
+    - name: "Create Credential for target cluster in Ansible Automation Controller"
+      awx.awx.credential:
+        name: "{{ hostvars[inventory_hostname].cluster_name }}"
+        organization: "Default"
+        credential_type: "OpenShift or Kubernetes API Bearer Token"
+        inputs: 
+          bearer_token: "{{ managed_serviceaccount.token }}"
+          host: "{{ cluster_proxy.cluster_url }}"
+          verify_ssl: no
+        state: present
+    - name: "Create Container Group for target cluster in Ansible Automation Controller"
+      awx.awx.instance_group:
+        name: "{{ hostvars[inventory_hostname].cluster_name }}"
+        credential:  "{{ hostvars[inventory_hostname].cluster_name }}"
+        is_container_group: yes
+
