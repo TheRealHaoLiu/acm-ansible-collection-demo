@@ -1,4 +1,4 @@
-- name: "Setup ACM Ansible Collection the Demo"
+- name: "Setup ACM Ansible Collection Demo"
   hosts: localhost
   gather_facts: false
   tasks:
@@ -75,3 +75,52 @@
         namespace: cool-app
       ask_variables_on_launch: yes
       state: "present"
+  # task for setting up container group demo
+  - name: "Create 'Ansible Automation Controller' Credential Type"
+    awx.awx.credential_type:
+      name: "Ansible Automation Controller"
+      kind: "cloud"
+      inputs: "{{ lookup('file', '../tower-config/credential_inputs_controller.json') }}"
+      injectors: "{{ lookup('file', '../tower-config/credential_injector_controller.json') }}"
+      state: present
+  - name: "Create 'self' Credential"
+    awx.awx.credential:
+      name: "self"
+      organization: "Default"
+      credential_type: "Ansible Automation Controller"
+      inputs: 
+        controller_host: "{{ lookup('env', 'CONTROLLER_HOST') }}"
+        controller_username: "{{ lookup('env', 'CONTROLLER_USERNAME') }}"
+        controller_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') }}"
+        controller_verify_ssl: "{{ lookup('env', 'CONTROLLER_VERIFY_SSL') }}"
+      state: present
+  - name: "Create 'Add ACM ManagedCluster as Container Group' Job Template"
+    awx.awx.job_template:
+      name: "Add ACM ManagedCluster as Container Group"
+      job_type: "run"
+      organization: "Default"
+      inventory: "ACM Cluster Inventory"
+      project: "ACM Ansible Collection Demo"
+      playbook: "playbooks/add-container-group.yml"
+      credentials:
+        - "ACM Hub"
+        - "self"
+      extra_vars:
+        target_hosts: all-managed-clusters
+      ask_variables_on_launch: yes
+      state: present
+  - name: "Create 'Remove ACM ManagedCluster as Container Group' Job Template"
+    awx.awx.job_template:
+      name: "Remove ACM ManagedCluster as Container Group"
+      job_type: "run"
+      organization: "Default"
+      inventory: "ACM Cluster Inventory"
+      project: "ACM Ansible Collection Demo"
+      playbook: "playbooks/remove-container-group.yml"
+      credentials:
+        - "ACM Hub"
+        - "self"
+      extra_vars:
+        target_hosts: all-managed-clusters
+      ask_variables_on_launch: yes
+      state: present

@@ -1,0 +1,32 @@
+- name: "Remove ACM ManageClusters from Ansible Automation Controller Container Groups"
+  hosts: "{{ target_hosts }}"
+  connection: local
+  gather_facts: false
+  tasks:
+    - include_tasks: ../roles/k8s-cluster-access/tasks/get-static-access.yml
+      vars:
+        rbac_template: ../k8s-rbac/cluster-admin
+        serviceaccount_name: cluster-admin
+    - name: "Delete namespace on target cluster"
+      kubernetes.core.k8s:
+        host: "{{ cluster_proxy.cluster_url }}"
+        validate_certs: no
+        api_key: "{{ managed_serviceaccount.token }}"
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "ansible-automation-platform"
+        state: absent
+    - name: "Delete Credential for target cluster in Ansible Automation Controller"
+      awx.awx.credential:
+        name: "{{ hostvars[inventory_hostname].cluster_name }}"
+        organization: "Default"
+        credential_type: "OpenShift or Kubernetes API Bearer Token"
+        state: absent
+    - name: "Delete Container Group for target cluster in Ansible Automation Controller"
+      awx.awx.instance_group:
+        name: "{{ hostvars[inventory_hostname].cluster_name }}"
+        is_container_group: yes
+        state: absent
+

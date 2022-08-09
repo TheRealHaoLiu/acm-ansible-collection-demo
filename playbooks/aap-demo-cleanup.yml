@@ -12,10 +12,20 @@
       state: absent
       hub_kubeconfig: "{{ lookup('env', 'K8S_AUTH_KUBECONFIG') }}"
       addon_name: managed-serviceaccount
+  # delete all demo Job Templates
   - name: "Remove 'K8S MultiCluster Management Demo' Job Template"
     awx.awx.job_template:
       name: "K8S MultiCluster Management Demo"
       state: absent
+  - name: "Remove 'Add ACM ManagedCluster as Container Group' Job Template"
+    awx.awx.job_template:
+      name: "Add ACM ManagedCluster as Container Group"
+      state: absent
+  - name: "Remove 'Remove ACM ManagedCluster as Container Group' Job Template"
+    awx.awx.job_template:
+      name: "Remove ACM ManagedCluster as Container Group"
+      state: absent
+  # delete all demo Inventories
   - name: "Remove 'ACM Cluster Inventory'"
     awx.awx.inventory:
       name: "ACM Cluster Inventory"
@@ -25,14 +35,27 @@
     awx.awx.project:
       name: "ACM Ansible Collection Demo"
       state: absent
+  # delete all demo Credentials
   - name: "Remove 'ACM Hub' Credential"
     awx.awx.credential:
       name: "ACM Hub"
       organization: "Default"
       credential_type: "ACM KubeConfig"
       state: absent
+  - name: "Remove 'self' Credential"
+    awx.awx.credential:
+      name: "self"
+      organization: "Default"
+      credential_type: "Ansible Automation Controller"
+      state: absent
+  # delete all demo Credential Types
   - name: "Remove 'ACM KubeConfig' Credential Type"
     awx.awx.credential_type:
       name: "ACM KubeConfig"
+      kind: "cloud"
+      state: absent
+  - name: "Remove 'Ansible Automation Controller' Credential Type"
+    awx.awx.credential_type:
+      name: "Ansible Automation Controller"
       kind: "cloud"
       state: absent
