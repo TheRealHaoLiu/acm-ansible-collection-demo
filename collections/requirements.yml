@@ -1,5 +1,7 @@
 collections:
 - name: stolostron.core
-  version: 0.0.1
+  source: https://github.com/TheRealHaoLiu/stolostron.ansible-collection.core
+  type: git
+  version: fix-cluster-proxy-integration-for-acm-2.6
 - name: kubernetes.core
 - name: awx.awx
